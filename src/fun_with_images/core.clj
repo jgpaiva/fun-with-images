@@ -18,39 +18,39 @@
                   (/ (q/height) 2)])
      2.55))
 
-(defn in-boundaries [max-x max-y [x y]]
+(defn in-boundaries [{:keys [max-x max-y]} [x y]]
   (and (>= x 0)
        (> max-x x)
        (>= y 0)
        (> max-y y)))
 
-(defn gen-directions [[x y] max-x max-y]
+(defn gen-directions [[x y] board]
   (->> [[x (inc y)] [(inc x) y] [x (dec y)] [(dec x) y]]
-    (filter (partial in-boundaries max-x max-y))
+    (filter (partial in-boundaries board))
     (into [])))
 
-(defn walk [point max-x max-y]
-  (let [directions (gen-directions point max-x max-y)]
+(defn walk [point board]
+  (let [directions (gen-directions point board)]
     (rand-nth directions)))
 
-(defn walk-target [target point max-x max-y]
-  (let [directions (gen-directions point max-x max-y)
+(defn walk-target [target point board]
+  (let [directions (gen-directions point board)
         directions-sorted (sort-by (partial dist target) directions)]
     (first directions-sorted)))
 
-(defn prob-walk-target [prob target point max-x max-y]
+(defn prob-walk-target [prob target point board]
   (if (< prob (rand))
-    (walk point max-x max-y)
-    (walk-target target point max-x max-y)))
+    (walk point board)
+    (walk-target target point board)))
 
-(comment (defn lots-of-walk [point max-x max-y f]
-  (let [next (f point max-x max-y)]
-    (lazy-seq (cons next (lots-of-walk next max-x max-y f))))))
+(comment (defn lots-of-walk [point board f]
+  (let [next (f point board)]
+    (lazy-seq (cons next (lots-of-walk next board f))))))
 
-(defn two-walks [point1 point2 max-x max-y f]
-  (let [next1 (f point2 point1 max-x max-y)
-        next2 (f point1 point2 max-x max-y)]
-    (lazy-seq (cons [next1 next2] (two-walks next1 next2 max-x max-y f)))))
+(defn two-walks [point1 point2 board f]
+  (let [next1 (f point2 point1 board)
+        next2 (f point1 point2 board)]
+    (lazy-seq (cons [next1 next2] (two-walks next1 next2 board f)))))
 
 (defn not-close-enough [p1 p2] (> (dist p1 p2) 2))
 
@@ -72,11 +72,13 @@
           start2 [700 200]
           color1 200
           color2 (- color1 180)
-          walk-function (partial prob-walk-target prob)]
+          walk-function (partial prob-walk-target prob)
+          board {:max-x (q/width)
+                 :max-y (q/height)}]
       (doseq [[point1 point2] (take-while+
                                 (fn [[p1 p2]] (not-close-enough p1 p2))
                                 (take 100000
-                                      (two-walks start1 start2 (q/width) (q/height) walk-function)))]
+                                      (two-walks start1 start2 board walk-function)))]
         (q/stroke (/ (* 255 color1) 360) (+ 20 (* prob 255)) 255)
         (apply q/point point1)
         (q/stroke (/ (* 255 color2) 360) (+ 20 (* prob 255)) 255)
